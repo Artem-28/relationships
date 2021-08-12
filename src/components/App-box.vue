@@ -1,15 +1,17 @@
 <template>
   <div class="box" ref="box"
-       @mousedown="start"
-       @mouseup="stop"
+       @mousedown.self="start"
+       @mouseup.self="stop"
        :style="{left, top}"
   >
-    <div class="box__content">
-      <div @click.stop="test" class="box__connect-point point-top" />
-      <div class="box__connect-point point-right" />
-      <div class="box__connect-point point-bottom" />
-      <div class="box__connect-point point-left" />
-    </div>
+    <div
+        v-for="(point, key) in boxData.relationships"
+        :key="point.id"
+        @click="$emit('click', { boxId: boxData.id, pointKey: key })"
+        class="connect-point"
+        :class="`point-${key}`"
+        :ref="key"
+    />
   </div>
 </template>
 
@@ -18,6 +20,7 @@ import draggable from "vuedraggable";
 
 export default {
   name: "App-box",
+  props: ['boxData'],
   data() {
     return {
       box: null,
@@ -29,15 +32,14 @@ export default {
   },
   methods: {
     start(event) {
-      console.log(event)
-      this.box = event.path[0]
+      this.box = this.$refs.box
       //Устанавливаем сдвиг относительно указателя мыши
-      this.shiftX = event.clientX - event.path[0].getBoundingClientRect().left;
-      this.shiftY = event.clientY - event.path[0].getBoundingClientRect().top;
+      this.shiftX = event.clientX - this.box.getBoundingClientRect().left;
+      this.shiftY = event.clientY - this.box.getBoundingClientRect().top;
       // удаляем браузерное событие
       this.box.ondragstart = () => false;
       // положим box в не relative блок
-     /* document.body.append(this.box);*/
+      document.body.append(this.box);
       // перетаскиваем box под указатель мыши
       this.moveAt(event);
       // передвигаем box при событии mousemove
@@ -50,6 +52,21 @@ export default {
     },
     // переносит box на координаты (pageX, pageY),
     moveAt(event) {
+      const pointTop = this.$refs.top[0].getBoundingClientRect()
+      const pointLeft = this.$refs.left[0].getBoundingClientRect()
+      const pointBottom = this.$refs.bottom[0].getBoundingClientRect()
+      const pointRight = this.$refs.right[0].getBoundingClientRect()
+      const relationships = this.boxData.relationships
+      const box = {
+        id: this.boxData.id,
+        relationships: {
+          top: { id: 1, pointKey: relationships.top.pointKey, boxId: relationships.top.boxId, x: pointTop.left, y: pointTop.top },
+          left: { id: 2, pointKey: relationships.left.pointKey, boxId: relationships.left.boxId, x: pointLeft.left, y: pointTop.top },
+          bottom: { id: 3, pointKey: relationships.bottom.pointKey, boxId: relationships.bottom.boxId, x: pointBottom.left, y: pointBottom.top },
+          right: { id: 4, pointKey: relationships.right.pointKey, boxId: relationships.right.boxId, x: pointRight.left, y: pointRight.top },
+        }
+      }
+      this.$emit('update-box', box)
       this.left = event.pageX - this.shiftX + 'px';
       this.top = event.pageY - this.shiftY + 'px';
     },
@@ -58,10 +75,6 @@ export default {
       document.removeEventListener('mousemove', this.onMouseMove);
       this.box.onmouseup = null;
     },
-    test(event){
-      event.stopImmediatePropagation()
-      console.log('click')
-    }
   }
 
 }
@@ -74,12 +87,9 @@ export default {
   width: 100px;
   height: 100px;
   background: green;
-  &__content {
-    position: relative;
-  }
-  &__connect-point {
+  .connect-point {
     z-index: 2;
-    position: relative;
+    position: absolute;
     width: 30px;
     height: 30px;
     background: red;

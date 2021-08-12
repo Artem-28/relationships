@@ -1,7 +1,15 @@
 <template>
   <div id="app">
     <div class="wrapper">
-      <app-box/>
+      {{connection}}
+      {{coordsMap}}
+      <app-box
+          v-for="box in boxes"
+          :key="box.id"
+          :box-data="box"
+          @click="test"
+          @update-box="updateBox"
+      />
     </div>
   </div>
 </template>
@@ -16,47 +24,101 @@ export default {
   },
   data() {
     return {
-      box: null,
-      left: 0,
-      top: 0,
-      shiftX: 0,
-      shiftY: 0
+      connection: [],
+      coordsMap: [],
+      boxes: [
+        {
+          id: 1,
+          relationships: {
+            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
+            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
+            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
+            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
+          }
+        },
+        {
+          id: 2,
+          relationships: {
+            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
+            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
+            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
+            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
+          }
+        },
+
+      ],
     }
   },
   methods: {
-    /*start(event) {
-      const ball = event.path[0]
-     /!* const ball = this.$refs.box*!/
-      //Устанавливаем сдвиг относительно указателя мыши
-      this.shiftX = event.clientX - ball.getBoundingClientRect().left;
-      this.shiftY = event.clientY - ball.getBoundingClientRect().top;
-      // удаляем браузерное событие
-      ball.ondragstart = () => false;
-      // положим box в не relative блок
-      document.body.append(ball);
-      // перетаскиваем box под указатель мыши
-      this.moveAt(event);
-      // передвигаем box при событии mousemove
-      document.addEventListener('mousemove', this.onMouseMove);
-    },
+    updateBox(boxData) {
+      const box = this.searchBoxById(boxData.id)
+      box.relationships = boxData.relationships
 
-    // передвигаем box при событии mousemove
-    onMouseMove(event) {
-      this.moveAt(event);
     },
-    // переносит box на координаты (pageX, pageY),
-    moveAt(event) {
-      this.left = event.pageX - this.shiftX + 'px';
-      this.top = event.pageY - this.shiftY + 'px';
+    test({boxId, pointKey}) {
+      const currentBox = this.searchBoxById(boxId)
+      const currentPoint = currentBox.relationships[pointKey];
+      if(currentPoint.boxId !== boxId) {
+        this.updateConnection({boxId, pointKey})
+      }
+    /*  console.log(pointKey)
+      console.log(currentPoint)*/
     },
-    // отпускаем box удаляем ненужные события
-    stop() {
-      const ball = this.$refs.box
-      document.removeEventListener('mousemove', this.onMouseMove);
-      ball.onmouseup = null;
-      console.log(ball)
+    searchBoxById(id) {
+      return this.boxes.filter(box => box.id === id)[0]
     },
-  }*/
+    updateConnection(data){
+      if(!this.connection.length) {
+        this.connection.push(data)
+        return
+      }
+      const firstPoint = this.connection[0];
+      /*console.log('first', firstPoint.boxId)
+      console.log(data)*/
+      if(firstPoint.boxId === data.boxId) {
+        this.connection.splice(0, 1, data)
+        return
+      }
+      this.connection.push(data)
+    },
+    generateKeyToCoordsMap({firstPoint, secondPoint}) {
+      return `${firstPoint.boxId}-${firstPoint.pointKey}-${secondPoint.boxId}-${secondPoint.pointKey}`
+    },
+    updateCoords(key, coords) {
+      this.coordsMap.push(key)
+      /*if(this.coordsMap.hasOwnProperty(key)) {
+        delete this.coordsMap[key];
+        return
+      }
+      this.coordsMap[key] = coords*/
+    }
+  },
+  watch: {
+    connection() {
+      if(this.connection.length === 2) {
+        const firstPoint = this.connection[0];
+        const secondPoint = this.connection[1];
+        const firstBox = this.searchBoxById(firstPoint.boxId)
+        const secondBox = this.searchBoxById(secondPoint.boxId)
+        const firstRelationship = firstBox.relationships[firstPoint.pointKey]
+        const secondRelationship = secondBox.relationships[secondPoint.pointKey]
+        firstRelationship.pointKey = secondPoint.pointKey
+        firstRelationship.boxId = secondPoint.boxId
+        secondRelationship.pointKey = firstPoint.pointKey
+        secondRelationship.boxId = firstPoint.boxId
+        const key = this.generateKeyToCoordsMap({firstPoint, secondPoint})
+        const coords = {
+          firstRelationship,
+          secondRelationship
+         /* x1: firstRelationship.x,
+          x2: firstRelationship.y,
+          y1: secondRelationship.x,
+          y2: secondRelationship.y*/
+        }
+        this.updateCoords(key, coords)
+        this.connection.length = 0
+      }
+    }
   }
 }
 </script>
