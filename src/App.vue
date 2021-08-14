@@ -10,6 +10,29 @@
           @click="test"
           @update-box="updateBox"
       />
+      <svg class="field">
+        <line
+            v-for="(coords, key) in coordsMap"
+            :key="key"
+            stroke="red"
+
+            :x1="searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].x"
+            :x2="searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].x"
+            :y1="searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].y"
+            :y2="searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].y"
+        />
+      </svg>
+    </div>
+
+    <div
+        v-for="(coords, key) in coordsMap"
+        :key="key"
+    >
+
+      x1: {{searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].x}}
+      x2: {{searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].x}}
+      y1: {{searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].y}}
+      y2: {{searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].y}}
     </div>
   </div>
 </template>
@@ -38,6 +61,15 @@ export default {
         },
         {
           id: 2,
+          relationships: {
+            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
+            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
+            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
+            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
+          }
+        },
+        {
+          id: 3,
           relationships: {
             top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
             left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
@@ -98,9 +130,15 @@ export default {
       if(this.connection.length === 2) {
         const firstPoint = this.connection[0];
         const secondPoint = this.connection[1];
+        const relationship = {firstPoint, secondPoint}
         const firstBox = this.searchBoxById(firstPoint.boxId)
         const secondBox = this.searchBoxById(secondPoint.boxId)
-        const firstRelationship = firstBox.relationships[firstPoint.pointKey]
+        firstBox.relationships[firstPoint.pointKey].relationship = relationship
+        secondBox.relationships[secondPoint.pointKey].relationship = relationship
+        this.coordsMap.push(relationship)
+        this.connection.length = 0
+        console.log()
+        /*const firstRelationship = firstBox.relationships[firstPoint.pointKey]
         const secondRelationship = secondBox.relationships[secondPoint.pointKey]
         firstRelationship.pointKey = secondPoint.pointKey
         firstRelationship.boxId = secondPoint.boxId
@@ -110,13 +148,13 @@ export default {
         const coords = {
           firstRelationship,
           secondRelationship
-         /* x1: firstRelationship.x,
+          x1: firstRelationship.x,
           x2: firstRelationship.y,
           y1: secondRelationship.x,
-          y2: secondRelationship.y*/
+          y2: secondRelationship.y
         }
         this.updateCoords(key, coords)
-        this.connection.length = 0
+        this.connection.length = 0*/
       }
     }
   }
@@ -131,9 +169,17 @@ export default {
 .wrapper {
   position: relative;
   overflow: hidden;
-  width: 500px;
-  height: 500px;
+  width: 100%;
+  height: 700px;
   border: 1px solid black;
+}
+.field {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 700px;
+  opacity: 0.5;
 }
 
 </style>

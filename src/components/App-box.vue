@@ -52,18 +52,17 @@ export default {
     },
     // переносит box на координаты (pageX, pageY),
     moveAt(event) {
-      const pointTop = this.$refs.top[0].getBoundingClientRect()
-      const pointLeft = this.$refs.left[0].getBoundingClientRect()
-      const pointBottom = this.$refs.bottom[0].getBoundingClientRect()
-      const pointRight = this.$refs.right[0].getBoundingClientRect()
       const relationships = this.boxData.relationships
+      console.log('left:', this.left, 'top: ', this.top)
+      console.log(this.box.getBoundingClientRect())
+      const coordsPointers = this.calculateCoordsPoints()
       const box = {
         id: this.boxData.id,
         relationships: {
-          top: { id: 1, pointKey: relationships.top.pointKey, boxId: relationships.top.boxId, x: pointTop.left, y: pointTop.top },
-          left: { id: 2, pointKey: relationships.left.pointKey, boxId: relationships.left.boxId, x: pointLeft.left, y: pointTop.top },
-          bottom: { id: 3, pointKey: relationships.bottom.pointKey, boxId: relationships.bottom.boxId, x: pointBottom.left, y: pointBottom.top },
-          right: { id: 4, pointKey: relationships.right.pointKey, boxId: relationships.right.boxId, x: pointRight.left, y: pointRight.top },
+          top: { id: 1, pointKey: relationships.top.pointKey, boxId: relationships.top.boxId, x: coordsPointers.topPointer.x, y: coordsPointers.topPointer.y },
+          left: { id: 2, pointKey: relationships.left.pointKey, boxId: relationships.left.boxId, x: coordsPointers.leftPointer.x, y: coordsPointers.leftPointer.y },
+          bottom: { id: 3, pointKey: relationships.bottom.pointKey, boxId: relationships.bottom.boxId, x: coordsPointers.bottomPointer.x, y: coordsPointers.bottomPointer.y },
+          right: { id: 4, pointKey: relationships.right.pointKey, boxId: relationships.right.boxId, x: coordsPointers.rightPointer.x, y: coordsPointers.rightPointer.y },
         }
       }
       this.$emit('update-box', box)
@@ -75,6 +74,28 @@ export default {
       document.removeEventListener('mousemove', this.onMouseMove);
       this.box.onmouseup = null;
     },
+    calculateCoordsPoints() {
+      const coordsBox = this.box.getBoundingClientRect()
+      const widthBox = coordsBox.width
+      const topPointer = {
+        x: coordsBox.left + (widthBox / 2),
+        y: coordsBox.top
+      }
+      const rightPointer = {
+        x: coordsBox.right,
+        y: coordsBox.top + (widthBox / 2)
+      }
+      const bottomPointer = {
+        x: coordsBox.left + (widthBox / 2),
+        y: coordsBox.bottom
+      }
+      const leftPointer = {
+        x: coordsBox.left,
+        y: coordsBox.top + (widthBox / 2)
+      }
+
+      return {topPointer, rightPointer, bottomPointer, leftPointer}
+    }
   }
 
 }
