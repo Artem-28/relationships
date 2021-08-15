@@ -1,169 +1,116 @@
 <template>
   <div id="app">
     <div class="wrapper">
-      {{connection}}
-      {{coordsMap}}
       <app-box
-          v-for="box in boxes"
+          v-for="box in boxesT"
           :key="box.id"
           :box-data="box"
-          @click="test"
+          @click="updateConnection"
           @update-box="updateBox"
       />
       <svg class="field">
         <line
-            v-for="(coords, key) in coordsMap"
+            v-for="(coords, key) in coordinationLine"
             :key="key"
             stroke="red"
 
-            :x1="searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].x"
-            :x2="searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].x"
-            :y1="searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].y"
-            :y2="searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].y"
+            :x1="getBoxById(coords.firstConnect.boxId).pointer[coords.firstConnect.pointKey].coordinates.x"
+            :x2="getBoxById(coords.secondConnect.boxId).pointer[coords.secondConnect.pointKey].coordinates.x"
+            :y1="getBoxById(coords.firstConnect.boxId).pointer[coords.firstConnect.pointKey].coordinates.y"
+            :y2="getBoxById(coords.secondConnect.boxId).pointer[coords.secondConnect.pointKey].coordinates.y"
         />
       </svg>
-    </div>
-
-    <div
-        v-for="(coords, key) in coordsMap"
-        :key="key"
-    >
-
-      x1: {{searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].x}}
-      x2: {{searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].x}}
-      y1: {{searchBoxById(coords.firstPoint.boxId).relationships[coords.firstPoint.pointKey].y}}
-      y2: {{searchBoxById(coords.secondPoint.boxId).relationships[coords.secondPoint.pointKey].y}}
     </div>
   </div>
 </template>
 
 <script>
 import AppBox from "./components/App-box";
+import {mapMutations, mapGetters} from 'vuex'
 
 export default {
   name: 'App',
   components: {
     AppBox,
   },
-  data() {
-    return {
-      connection: [],
-      coordsMap: [],
-      boxes: [
-        {
-          id: 1,
-          relationships: {
-            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
-            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
-            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
-            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
-          }
-        },
-        {
-          id: 2,
-          relationships: {
-            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
-            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
-            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
-            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
-          }
-        },
-        {
-          id: 3,
-          relationships: {
-            top: { id: 1, pointKey: null, boxId: null, x: 0, y: 0 },
-            left: { id: 2, pointKey: null, boxId: null, x: 0, y: 0 },
-            bottom: { id: 3, pointKey: null, boxId: null, x: 0, y: 0 },
-            right: { id: 4, pointKey: null, boxId: null, x: 0, y: 0 },
-          }
-        },
-
-      ],
-    }
+  computed: {
+    ...mapGetters({
+      connectionData: "Relationship/connectionData",
+      boxesT: "Boxes/boxes",
+      coordinationLine: "Relationship/coordinationLine",
+      isReadyConnection: "Relationship/isReadyConnection",
+      isEmptyConnection: "Relationship/isEmptyConnection",
+      firstConnect: "Relationship/firstConnect",
+      getBoxById: "Boxes/getBoxById",
+    }),
   },
   methods: {
-    updateBox(boxData) {
-      const box = this.searchBoxById(boxData.id)
-      box.relationships = boxData.relationships
+    ...mapMutations({
+      updateCoordinationPointer: "Boxes/updateCoordinationPointer",
+      updatePointStatus: "Boxes/updatePointStatus",
+      addedConnect: "Relationship/addedConnect",
+      replaceConnect: "Relationship/replaceConnect",
+      connectionOfBoxes: "Boxes/connectionOfBoxes",
+      addedCoordinationLine: "Relationship/addedCoordinationLine",
+      deleteConnectionOfBoxes: "Boxes/deleteConnectionOfBoxes",
+      deleteCoordinationLine: "Relationship/deleteCoordinationLine"
+    }),
 
+    updateBox(boxData) {
+      this.updateCoordinationPointer({ boxId: boxData.id, coordinates: boxData.coordinates })
     },
-    test({boxId, pointKey}) {
-      const currentBox = this.searchBoxById(boxId)
-      const currentPoint = currentBox.relationships[pointKey];
-      if(currentPoint.boxId !== boxId) {
-        this.updateConnection({boxId, pointKey})
-      }
-    /*  console.log(pointKey)
-      console.log(currentPoint)*/
-    },
-    searchBoxById(id) {
-      return this.boxes.filter(box => box.id === id)[0]
-    },
+
     updateConnection(data){
-      if(!this.connection.length) {
-        this.connection.push(data)
+      const currentBox = this.getBoxById(data.boxId)
+      const currentPoint = currentBox.pointer[data.pointKey]
+
+      if (currentPoint.relationship.status === 'ready') {
+        const connectId = this.getBoxById(data.boxId).pointer[data.pointKey].relationship.connectId
+        this.deleteCoordinationLine(connectId)
+        this.deleteConnectionOfBoxes(currentPoint.relationship)
+
+        if(this.isEmptyConnection) return;
+      }
+
+      if(this.isEmptyConnection) {
+        this.addedConnect(data)
+        this.updatePointStatus({boxId: data.boxId, pointKey: data.pointKey, status: 'wait'})
+
         return
       }
-      const firstPoint = this.connection[0];
-      /*console.log('first', firstPoint.boxId)
-      console.log(data)*/
-      if(firstPoint.boxId === data.boxId) {
-        this.connection.splice(0, 1, data)
+
+      if(this.firstConnect.boxId === data.boxId) {
+        const oldConnect = this.firstConnect
+        this.updatePointStatus({boxId: oldConnect.boxId, pointKey: oldConnect.pointKey, status: 'empty'})
+        this.replaceConnect(data)
+        this.updatePointStatus({boxId: data.boxId, pointKey: data.pointKey, status: 'wait'})
+
         return
       }
-      this.connection.push(data)
+      this.addedConnect(data)
     },
-    generateKeyToCoordsMap({firstPoint, secondPoint}) {
-      return `${firstPoint.boxId}-${firstPoint.pointKey}-${secondPoint.boxId}-${secondPoint.pointKey}`
-    },
-    updateCoords(key, coords) {
-      this.coordsMap.push(key)
-      /*if(this.coordsMap.hasOwnProperty(key)) {
-        delete this.coordsMap[key];
-        return
-      }
-      this.coordsMap[key] = coords*/
+
+    generateKeyForMap({firstConnect, secondConnect}) {
+      return `${firstConnect.boxId}-${firstConnect.pointKey}-${secondConnect.boxId}-${secondConnect.pointKey}`
     }
   },
   watch: {
-    connection() {
-      if(this.connection.length === 2) {
-        const firstPoint = this.connection[0];
-        const secondPoint = this.connection[1];
-        const relationship = {firstPoint, secondPoint}
-        const firstBox = this.searchBoxById(firstPoint.boxId)
-        const secondBox = this.searchBoxById(secondPoint.boxId)
-        firstBox.relationships[firstPoint.pointKey].relationship = relationship
-        secondBox.relationships[secondPoint.pointKey].relationship = relationship
-        this.coordsMap.push(relationship)
-        this.connection.length = 0
-        console.log()
-        /*const firstRelationship = firstBox.relationships[firstPoint.pointKey]
-        const secondRelationship = secondBox.relationships[secondPoint.pointKey]
-        firstRelationship.pointKey = secondPoint.pointKey
-        firstRelationship.boxId = secondPoint.boxId
-        secondRelationship.pointKey = firstPoint.pointKey
-        secondRelationship.boxId = firstPoint.boxId
-        const key = this.generateKeyToCoordsMap({firstPoint, secondPoint})
-        const coords = {
-          firstRelationship,
-          secondRelationship
-          x1: firstRelationship.x,
-          x2: firstRelationship.y,
-          y1: secondRelationship.x,
-          y2: secondRelationship.y
-        }
-        this.updateCoords(key, coords)
-        this.connection.length = 0*/
+    isReadyConnection() {
+      if(this.isReadyConnection){
+        const key = this.generateKeyForMap(this.connectionData)
+        this.connectionOfBoxes({...this.connectionData, connectionKey: key})
+        this.addedCoordinationLine(key)
       }
     }
   }
+
 }
 </script>
 
 <style lang="scss">
 #app {
   width: 100%;
+  padding: 100px;
   height: 100vh;
 }
 .wrapper {

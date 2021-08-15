@@ -5,11 +5,11 @@
        :style="{left, top}"
   >
     <div
-        v-for="(point, key) in boxData.relationships"
-        :key="point.id"
+        v-for="(point, key) in boxData.pointer"
+        :key="key"
         @click="$emit('click', { boxId: boxData.id, pointKey: key })"
         class="connect-point"
-        :class="`point-${key}`"
+        :class="`point-${key} ${point.relationship.status}`"
         :ref="key"
     />
   </div>
@@ -24,6 +24,7 @@ export default {
   data() {
     return {
       box: null,
+      fieldCoordinates: null,
       left: 0,
       top: 0,
       shiftX: 0,
@@ -32,14 +33,11 @@ export default {
   },
   methods: {
     start(event) {
-      this.box = this.$refs.box
       //Устанавливаем сдвиг относительно указателя мыши
       this.shiftX = event.clientX - this.box.getBoundingClientRect().left;
       this.shiftY = event.clientY - this.box.getBoundingClientRect().top;
       // удаляем браузерное событие
       this.box.ondragstart = () => false;
-      // положим box в не relative блок
-      document.body.append(this.box);
       // перетаскиваем box под указатель мыши
       this.moveAt(event);
       // передвигаем box при событии mousemove
@@ -52,31 +50,36 @@ export default {
     },
     // переносит box на координаты (pageX, pageY),
     moveAt(event) {
-      const relationships = this.boxData.relationships
-      console.log('left:', this.left, 'top: ', this.top)
-      console.log(this.box.getBoundingClientRect())
-      const coordsPointers = this.calculateCoordsPoints()
-      const box = {
-        id: this.boxData.id,
-        relationships: {
-          top: { id: 1, pointKey: relationships.top.pointKey, boxId: relationships.top.boxId, x: coordsPointers.topPointer.x, y: coordsPointers.topPointer.y },
-          left: { id: 2, pointKey: relationships.left.pointKey, boxId: relationships.left.boxId, x: coordsPointers.leftPointer.x, y: coordsPointers.leftPointer.y },
-          bottom: { id: 3, pointKey: relationships.bottom.pointKey, boxId: relationships.bottom.boxId, x: coordsPointers.bottomPointer.x, y: coordsPointers.bottomPointer.y },
-          right: { id: 4, pointKey: relationships.right.pointKey, boxId: relationships.right.boxId, x: coordsPointers.rightPointer.x, y: coordsPointers.rightPointer.y },
-        }
-      }
-      this.$emit('update-box', box)
-      this.left = event.pageX - this.shiftX + 'px';
-      this.top = event.pageY - this.shiftY + 'px';
+      this.updateCoordinatesPointersBox()
+      this.left = event.pageX - this.fieldCoordinates.left - this.shiftX + 'px';
+      this.top = event.pageY - this.fieldCoordinates.top - this.shiftY + 'px';
     },
     // отпускаем box удаляем ненужные события
     stop() {
       document.removeEventListener('mousemove', this.onMouseMove);
       this.box.onmouseup = null;
     },
+    updateCoordinatesPointersBox() {
+      const coordsPointers = this.calculateCoordsPoints()
+      const box = {
+        id: this.boxData.id,
+        coordinates: {
+          top: { x: coordsPointers.topPointer.x, y: coordsPointers.topPointer.y },
+          left: { x: coordsPointers.leftPointer.x, y: coordsPointers.leftPointer.y },
+          bottom: { x: coordsPointers.bottomPointer.x, y: coordsPointers.bottomPointer.y},
+          right: { x: coordsPointers.rightPointer.x, y: coordsPointers.rightPointer.y},
+        }
+      }
+      this.$emit('update-box', box)
+    },
     calculateCoordsPoints() {
-      const coordsBox = this.box.getBoundingClientRect()
-      const widthBox = coordsBox.width
+      const widthBox = this.box.getBoundingClientRect().width
+      const coordsBox = {
+        left: this.box.offsetLeft,
+        top: this.box.offsetTop,
+        right: this.box.offsetLeft + widthBox,
+        bottom: this.box.offsetTop + widthBox
+      }
       const topPointer = {
         x: coordsBox.left + (widthBox / 2),
         y: coordsBox.top
@@ -96,6 +99,11 @@ export default {
 
       return {topPointer, rightPointer, bottomPointer, leftPointer}
     }
+  },
+  mounted() {
+    this.box = this.$refs.box
+    this.fieldCoordinates = this.box.parentNode.getBoundingClientRect()
+    this.updateCoordinatesPointersBox()
   }
 
 }
@@ -116,6 +124,15 @@ export default {
     background: red;
     border-radius: 50%;
     border: 4px solid #fff;
+  }
+  .empty {
+    background: cornflowerblue;
+  }
+  .wait {
+    background: gold;
+  }
+  .ready {
+    background: green;
   }
   .point-top {
     left: 31px;
